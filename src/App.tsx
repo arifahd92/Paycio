@@ -26,7 +26,7 @@ const KonvaTextEditor: React.FC = () => {
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
-  const selectedNodeRef = useRef<TextNode | null>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     addTextNode();
@@ -77,6 +77,11 @@ const KonvaTextEditor: React.FC = () => {
   }, [selectedId]);
 
   const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
+    if (isDragging.current) {
+      isDragging.current = false;
+      return;
+    }
+
     if (e.target === e.target.getStage()) {
       setSelectedId(null);
       return;
@@ -87,7 +92,6 @@ const KonvaTextEditor: React.FC = () => {
       setSelectedId(id);
       const node = textNodes.find((n) => n.id === id);
       if (node) {
-        selectedNodeRef.current = node;
         setCurrentColor(node.fontColor);
         setCurrentFontSize(node.fontSize);
       }
@@ -96,14 +100,18 @@ const KonvaTextEditor: React.FC = () => {
     }
   };
 
+  const handleDragStart = () => {
+    isDragging.current = true;
+  };
+
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     const id = e.target.id();
-
     setTextNodes((prevNodes) =>
       prevNodes.map((node) =>
         node.id === id ? { ...node, x: e.target.x(), y: e.target.y() } : node
       )
     );
+    isDragging.current = false;
   };
 
   const handleTransform = (e: KonvaEventObject<Event> | any) => {
@@ -118,13 +126,14 @@ const KonvaTextEditor: React.FC = () => {
       setCurrentFontSize(newFontSize);
     }
 
-    e.target.fontSize(newFontSize);
     e.target.scaleX(1);
     e.target.scaleY(1);
   };
 
   const handleTransformEnd = (e: KonvaEventObject<Event>) => {
     const id = e.target.id();
+    const node = textNodes.find((n) => n.id === id);
+    if (!node) return;
 
     setTextNodes((prevNodes) =>
       prevNodes.map((node) =>
@@ -146,6 +155,8 @@ const KonvaTextEditor: React.FC = () => {
   };
 
   const handleTextDoubleClick = (e: KonvaEventObject<MouseEvent>) => {
+    if (isDragging.current) return;
+
     const id = e.target.id();
     const node = textNodes.find((n) => n.id === id);
     if (!node) return;
@@ -154,12 +165,15 @@ const KonvaTextEditor: React.FC = () => {
     setSelectedId(id);
     setCurrentColor(node.fontColor);
     setCurrentFontSize(node.fontSize);
-    selectedNodeRef.current = node;
 
-    updateTextNode(id, { isEditing: true });
+    setTextNodes((prevNodes) =>
+      prevNodes.map((n) =>
+        n.id === id ? { ...n, isEditing: true } : { ...n, isEditing: false }
+      )
+    );
 
     setTimeout(() => {
-      if (textInputRef.current && node) {
+      if (textInputRef.current) {
         const stage = e.target.getStage();
         const position = e.target.absolutePosition();
         const scale = stage?.scaleX() || 1;
@@ -186,12 +200,19 @@ const KonvaTextEditor: React.FC = () => {
 
     const updatedText = textInputRef.current?.value || editText;
     
-    updateTextNode(selectedId, {
-      text: updatedText,
-      fontColor: currentColor,
-      fontSize: currentFontSize,
-      isEditing: false,
-    });
+    setTextNodes((prevNodes) =>
+      prevNodes.map((node) =>
+        node.id === selectedId
+          ? {
+              ...node,
+              text: updatedText,
+              fontColor: currentColor,
+              fontSize: currentFontSize,
+              isEditing: false,
+            }
+          : node
+      )
+    );
     
     setEditText(updatedText);
   };
@@ -206,7 +227,11 @@ const KonvaTextEditor: React.FC = () => {
         node.getLayer().batchDraw();
       }
 
-      updateTextNode(selectedId, { fontSize: size });
+      setTextNodes((prevNodes) =>
+        prevNodes.map((node) =>
+          node.id === selectedId ? { ...node, fontSize: size } : node
+        )
+      );
 
       if (
         textInputRef.current &&
@@ -227,7 +252,11 @@ const KonvaTextEditor: React.FC = () => {
         node.getLayer().batchDraw();
       }
 
-      updateTextNode(selectedId, { fontColor: color });
+      setTextNodes((prevNodes) =>
+        prevNodes.map((node) =>
+          node.id === selectedId ? { ...node, fontColor: color } : node
+        )
+      );
 
       if (
         textInputRef.current &&
@@ -236,12 +265,6 @@ const KonvaTextEditor: React.FC = () => {
         textInputRef.current.style.color = color;
       }
     }
-  };
-
-  const updateTextNode = (id: string, updates: Partial<TextNode>) => {
-    setTextNodes((prevNodes) =>
-      prevNodes.map((node) => (node.id === id ? { ...node, ...updates } : node))
-    );
   };
 
   const addTextNode = () => {
@@ -256,7 +279,6 @@ const KonvaTextEditor: React.FC = () => {
     };
     setTextNodes((prevNodes) => [...prevNodes, newTextNode]);
     setSelectedId(newTextNode.id);
-    selectedNodeRef.current = newTextNode;
   };
 
   const exportAsImage = () => {
@@ -280,6 +302,7 @@ const KonvaTextEditor: React.FC = () => {
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
       setTextNodes(cloneDeep(history[newIndex]));
+      setSelectedId(null);
     }
   };
 
@@ -288,6 +311,7 @@ const KonvaTextEditor: React.FC = () => {
       const newIndex = historyIndex + 1;
       setHistoryIndex(newIndex);
       setTextNodes(cloneDeep(history[newIndex]));
+      setSelectedId(null);
     }
   };
 
@@ -297,7 +321,6 @@ const KonvaTextEditor: React.FC = () => {
       prevNodes.filter((node) => node.id !== selectedId)
     );
     setSelectedId(null);
-    selectedNodeRef.current = null;
   };
 
   return (
@@ -408,6 +431,7 @@ const KonvaTextEditor: React.FC = () => {
                         fontSize={node.fontSize}
                         fill={node.fontColor}
                         draggable
+                        onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
                         onDblClick={handleTextDoubleClick}
                         onTransform={handleTransform}
