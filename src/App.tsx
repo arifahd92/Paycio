@@ -28,12 +28,10 @@ const KonvaTextEditor: React.FC = () => {
   const textInputRef = useRef<HTMLInputElement>(null);
   const selectedNodeRef = useRef<TextNode | null>(null);
 
-  // Initialize with default text node
   useEffect(() => {
     addTextNode();
   }, []);
 
-  // Update history when textNodes change
   useEffect(() => {
     if (historyIndex === -1 || !isEqual(history[historyIndex], textNodes)) {
       const newHistory = history.slice(0, historyIndex + 1);
@@ -43,7 +41,6 @@ const KonvaTextEditor: React.FC = () => {
     }
   }, [textNodes]);
 
-  // Add keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey) {
@@ -61,17 +58,14 @@ const KonvaTextEditor: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [history, historyIndex]);
 
-  // Helper function to deep compare arrays
   const isEqual = (a: TextNode[], b: TextNode[]) => {
     return JSON.stringify(a) === JSON.stringify(b);
   };
 
-  // Helper function to deep clone
   const cloneDeep = (nodes: TextNode[]) => {
     return JSON.parse(JSON.stringify(nodes));
   };
 
-  // Update transformer when selected node changes
   useEffect(() => {
     if (selectedId && transformerRef.current) {
       const node = stageRef.current.findOne(`#${selectedId}`);
@@ -120,12 +114,10 @@ const KonvaTextEditor: React.FC = () => {
     const scaleX = e.target.scaleX();
     const newFontSize = Math.max(5, node.fontSize * scaleX);
 
-    // Update the selected node's fontSize in real-time
     if (selectedId === id) {
       setCurrentFontSize(newFontSize);
     }
 
-    // Update the text node's visual appearance
     e.target.fontSize(newFontSize);
     e.target.scaleX(1);
     e.target.scaleY(1);
@@ -141,7 +133,7 @@ const KonvaTextEditor: React.FC = () => {
               ...node,
               x: e.target.x(),
               y: e.target.y(),
-              fontSize: Math.max(5, node.fontSize * e.target.scaleX()), // Keep transformations
+              fontSize: Math.max(5, node.fontSize * e.target.scaleX()),
               width: e.target.width() * e.target.scaleX(),
               height: e.target.height() * e.target.scaleY(),
             }
@@ -149,7 +141,6 @@ const KonvaTextEditor: React.FC = () => {
       )
     );
 
-    // Reset the scale to prevent re-scaling on further interactions
     e.target.scaleX(1);
     e.target.scaleY(1);
   };
@@ -165,10 +156,8 @@ const KonvaTextEditor: React.FC = () => {
     setCurrentFontSize(node.fontSize);
     selectedNodeRef.current = node;
 
-    // Mark the node as editing
     updateTextNode(id, { isEditing: true });
 
-    // Position and focus the input element
     setTimeout(() => {
       if (textInputRef.current && node) {
         const stage = e.target.getStage();
@@ -186,6 +175,7 @@ const KonvaTextEditor: React.FC = () => {
         textInputRef.current.style.border = "1px dashed #999";
         textInputRef.current.style.padding = "2px";
         textInputRef.current.style.borderRadius = "3px";
+        textInputRef.current.value = node.text;
         textInputRef.current.focus();
       }
     }, 0);
@@ -194,12 +184,16 @@ const KonvaTextEditor: React.FC = () => {
   const handleInputBlur = () => {
     if (!selectedId) return;
 
+    const updatedText = textInputRef.current?.value || editText;
+    
     updateTextNode(selectedId, {
-      text: editText,
+      text: updatedText,
       fontColor: currentColor,
       fontSize: currentFontSize,
       isEditing: false,
     });
+    
+    setEditText(updatedText);
   };
 
   const handleFontSizeChange = (size: number) => {
@@ -392,7 +386,6 @@ const KonvaTextEditor: React.FC = () => {
           </button>
         </div>
 
-        {/* Canvas */}
         <div className="flex-1 p-4 overflow-auto">
           <div className="relative border border-gray-300 bg-white shadow-sm">
             <Stage
@@ -429,7 +422,6 @@ const KonvaTextEditor: React.FC = () => {
                     <Transformer
                       ref={transformerRef}
                       boundBoxFunc={(oldBox, newBox) => {
-                        // Limit minimum size
                         if (newBox.width < 5 || newBox.height < 5) {
                           return oldBox;
                         }
@@ -443,7 +435,7 @@ const KonvaTextEditor: React.FC = () => {
             {textNodes.some((n) => n.isEditing) && (
               <input
                 ref={textInputRef}
-                value={editText}
+                defaultValue={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 onBlur={handleInputBlur}
                 onKeyDown={(e) => {

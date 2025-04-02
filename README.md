@@ -1,5 +1,42 @@
 # React + TypeScript + Vite
 
+# pycio
+
+## Project Setup
+
+### Clone the Repository
+
+```sh
+git clone https://github.com/arifahd92/Paycio
+cd Paycio
+```
+
+### Install Dependencies
+
+```sh
+npm install
+```
+
+### Run in Development Mode
+
+```sh
+npm run dev
+```
+
+### Build the Project
+
+
+
+## Technologies Used
+
+- **Vite** for fast development
+- **React 19** for UI
+- **Tailwind CSS** for styling
+- **Konva & React-Konva** for canvas drawing
+- **html2canvas** for rendering HTML elements as images
+- **TypeScript** for type safety
+
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
